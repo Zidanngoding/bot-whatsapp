@@ -138,21 +138,28 @@ async function startBot() {
 
     console.log("Received message:", text); // Debug log    console.log('Message type:', Object.keys(msg.message)); // Debug log
     const menuText = [
-      "MENU COMMAND",
+      "🎉 MENU BOT WA 🎉",
       "",
-      "- !menu : lihat daftar command",
-      "- !stiker : kirim gambar dengan caption !stiker",
-      "- !brat <text> : buat stiker teks",
+      "🤖 Perintah Bot:",
+      "",
+      "✨ !menu",
+      "📋 Lihat semua fitur bot",
+      "",
+      "✨ !stiker",
+      "🖼️ Kirim gambar + caption !stiker → jadi stiker",
+      "",
+      "✨ !brat <teks>",
+      "✏️ Ubah teks jadi stiker keren",
     ].join("\n");
 
     if (text === "!menu") {
       await sock.sendMessage(from, { text: menuText });
       return;
     }
-    // Check if message is an image with caption "!stiker"
+    // Check if message is an image with caption "!sticker"
     if (
       msg.message.imageMessage &&
-      msg.message.imageMessage.caption === "!stiker"
+      msg.message.imageMessage.caption === "!sticker"
     ) {
       // Check cooldown
       if (stickerCooldowns.has(sender)) {
