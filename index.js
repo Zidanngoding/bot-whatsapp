@@ -1,13 +1,12 @@
-const {
-  default: makeWASocket,
+import makeWASocket, {
   useMultiFileAuthState,
   downloadContentFromMessage,
   DisconnectReason,
-} = require("@whiskeysockets/baileys");
+} from "@whiskeysockets/baileys";
 
-const qrcode = require("qrcode-terminal");
-const sharp = require("sharp");
-const { createCanvas } = require("canvas");
+import qrcode from "qrcode-terminal";
+import sharp from "sharp";
+import { createCanvas } from "canvas";
 
 // Function to wrap text
 function wrapText(ctx, text, maxWidth) {
