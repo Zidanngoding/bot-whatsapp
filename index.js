@@ -7,6 +7,11 @@ import makeWASocket, {
 import qrcode from "qrcode-terminal";
 import sharp from "sharp";
 import { createCanvas } from "canvas";
+import { promises as fs } from "fs";
+import os from "os";
+import path from "path";
+import crypto from "crypto";
+import { spawn } from "child_process";
 
 // Function to wrap text
 function wrapText(ctx, text, maxWidth) {
@@ -96,6 +101,49 @@ function fitTextToBox(ctx, text, maxWidth, maxHeight) {
 
 // Cooldown storage: Map of sender JID to last timestamp
 const stickerCooldowns = new Map();
+const MAX_VIDEO_SECONDS = 10;
+const MAX_VIDEO_SIZE_BYTES = 10 * 1024 * 1024;
+
+async function streamToBuffer(stream) {
+  let buffer = Buffer.from([]);
+  for await (const chunk of stream) {
+    buffer = Buffer.concat([buffer, chunk]);
+  }
+  return buffer;
+}
+
+async function convertVideoToWebp(inputPath, outputPath) {
+  const args = [
+    "-y",
+    "-i",
+    inputPath,
+    "-t",
+    String(MAX_VIDEO_SECONDS),
+    "-vf",
+    "scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000",
+    "-an",
+    "-vcodec",
+    "libwebp",
+    "-loop",
+    "0",
+    "-preset",
+    "default",
+    "-q:v",
+    "50",
+    "-compression_level",
+    "6",
+    outputPath,
+  ];
+
+  await new Promise((resolve, reject) => {
+    const proc = spawn("ffmpeg", args, { stdio: "ignore" });
+    proc.on("error", reject);
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited with code ${code}`));
+    });
+  });
+}
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("auth");
@@ -144,11 +192,11 @@ async function startBot() {
       "✨ !menu",
       "📋 Lihat semua fitur bot",
       "",
-      "✨ !stiker",
-      "🖼️ Kirim gambar + caption !stiker → jadi stiker",
+      "✨ !sticker",
+      "🖼️ Kirim gambar/video + caption !sticker → jadi sticker",
       "",
       "✨ !brat <teks>",
-      "✏️ Ubah teks jadi stiker keren",
+      "✏️ Ubah teks jadi sticker keren. cth:(!brat halo dunia)",
     ].join("\n");
 
     if (text === "!menu") {
@@ -176,11 +224,7 @@ async function startBot() {
           msg.message.imageMessage,
           "image"
         );
-
-        let buffer = Buffer.from([]);
-        for await (const chunk of stream) {
-          buffer = Buffer.concat([buffer, chunk]);
-        }
+        const buffer = await streamToBuffer(stream);
 
         // Resize to 512x512, maintaining aspect ratio, fit cover
         const sticker = await sharp(buffer)
@@ -202,8 +246,68 @@ async function startBot() {
       } catch (error) {
         console.error("Error creating sticker:", error);
         await sock.sendMessage(from, {
-          text: "Gagal membuat stiker. Pastikan gambar valid.",
+          text: "Gagal membuat sticker. Pastikan gambar valid.",
         });
+      }
+    } else if (
+      text === "!stiker" ||
+      msg.message.videoMessage?.caption === "!stiker"
+    ) {
+      const quotedVideo =
+        msg.message.extendedTextMessage?.contextInfo?.quotedMessage
+          ?.videoMessage;
+      const videoMessage = msg.message.videoMessage || quotedVideo;
+
+      if (!videoMessage) {
+        await sock.sendMessage(from, {
+          text: "Kirim video atau reply video dengan caption !stiker",
+        });
+        return;
+      }
+
+      if (videoMessage.seconds && videoMessage.seconds > MAX_VIDEO_SECONDS) {
+        await sock.sendMessage(from, {
+          text: `Durasi video maksimal ${MAX_VIDEO_SECONDS} detik`,
+        });
+        return;
+      }
+
+      if (
+        videoMessage.fileLength &&
+        videoMessage.fileLength > MAX_VIDEO_SIZE_BYTES
+      ) {
+        await sock.sendMessage(from, {
+          text: "Ukuran video terlalu besar (maks 10MB)",
+        });
+        return;
+      }
+
+      const tempId = crypto.randomBytes(8).toString("hex");
+      const inputPath = path.join(os.tmpdir(), `video-${tempId}.mp4`);
+      const outputPath = path.join(os.tmpdir(), `sticker-${tempId}.webp`);
+
+      try {
+        const stream = await downloadContentFromMessage(videoMessage, "video");
+        const buffer = await streamToBuffer(stream);
+        await fs.writeFile(inputPath, buffer);
+
+        await convertVideoToWebp(inputPath, outputPath);
+
+        const sticker = await fs.readFile(outputPath);
+        await sock.sendMessage(from, {
+          sticker,
+          packname: "Bot Sticker",
+          author: "Bot",
+        });
+        console.log("Video sticker sent successfully");
+      } catch (error) {
+        console.error("Error creating video sticker:", error);
+        await sock.sendMessage(from, {
+          text: "Gagal membuat stiker video.",
+        });
+      } finally {
+        await fs.unlink(inputPath).catch(() => {});
+        await fs.unlink(outputPath).catch(() => {});
       }
     } else if (text && (text === "!brat" || text.startsWith("!brat "))) {
       const inputText = text.slice(5).trim();
