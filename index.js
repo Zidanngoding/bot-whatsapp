@@ -1,4 +1,4 @@
-import makeWASocket, {
+﻿import makeWASocket, {
   useMultiFileAuthState,
   downloadContentFromMessage,
   DisconnectReason,
@@ -185,18 +185,27 @@ async function startBot() {
 
     console.log("Received message:", text); // Debug log    console.log('Message type:', Object.keys(msg.message)); // Debug log
     const menuText = [
-      "== MENU BOT WA ==",
+      "=========================",
+      "🤖 MENU BOT WA",
+      "=========================",
       "",
-      "- Perintah Bot:",
+      "!menu",
+      "Lihat semua fitur bot",
       "",
-      "� !menu",
-      "  Lihat semua fitur bot",
+      "!sticker",
+      "Kirim gambar / video",
+      "+ caption !sticker",
+      "-> jadi stiker",
       "",
-      "� !sticker",
-      "  Kirim gambar/video + caption !sticker jadi sticker",
+      "!brat <teks>",
+      "Ubah teks jadi stiker",
+      "Contoh:",
+      "!brat halo dunia 😎",
       "",
-      "� !brat <teks>",
-      "  Ubah teks jadi sticker keren. cth: (!brat halo dunia)",
+      "=========================",
+      "⚡ Simple • Fast • Fun",
+      "🚀 Selamat mencoba!",
+      "=========================",
     ].join("\n");
 
     if (text === "!menu") {
@@ -250,8 +259,8 @@ async function startBot() {
         });
       }
     } else if (
-      text === "!stiker" ||
-      msg.message.videoMessage?.caption === "!stiker"
+      text === "!sticker" ||
+      msg.message.videoMessage?.caption === "!sticker"
     ) {
       const quotedVideo =
         msg.message.extendedTextMessage?.contextInfo?.quotedMessage
@@ -260,7 +269,7 @@ async function startBot() {
 
       if (!videoMessage) {
         await sock.sendMessage(from, {
-          text: "Kirim video atau reply video dengan caption !stiker",
+          text: "Kirim video atau reply video dengan caption !sticker",
         });
         return;
       }
@@ -303,7 +312,7 @@ async function startBot() {
       } catch (error) {
         console.error("Error creating video sticker:", error);
         await sock.sendMessage(from, {
-          text: "Gagal membuat stiker video.",
+          text: "Gagal membuat sticker video.",
         });
       } finally {
         await fs.unlink(inputPath).catch(() => {});
@@ -378,7 +387,7 @@ async function startBot() {
       } catch (error) {
         console.error("Error creating text sticker:", error);
         await sock.sendMessage(from, {
-          text: "Gagal membuat stiker teks.",
+          text: "Gagal membuat sticker teks.",
         });
       }
     }
@@ -386,4 +395,3 @@ async function startBot() {
 }
 
 startBot();
-
