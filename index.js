@@ -157,16 +157,16 @@ async function startBot() {
     const { connection, qr } = update;
 
     if (qr) {
-      console.log("📲 Scan QR ini pakai WhatsApp:");
+      console.log("Scan QR ini pakai WhatsApp:");
       qrcode.generate(qr, { small: true });
     }
 
     if (connection === "open") {
-      console.log("✅ Bot WhatsApp berhasil terhubung!");
+      console.log("Bot WhatsApp berhasil terhubung!");
     }
 
     if (connection === "close") {
-      console.log("❌ Koneksi terputus, reconnecting...");
+      console.log("Koneksi terputus, reconnecting...");
       startBot();
     }
   });
@@ -185,18 +185,18 @@ async function startBot() {
 
     console.log("Received message:", text); // Debug log    console.log('Message type:', Object.keys(msg.message)); // Debug log
     const menuText = [
-      "🎉 MENU BOT WA 🎉",
+      "== MENU BOT WA ==",
       "",
-      "🤖 Perintah Bot:",
+      "- Perintah Bot:",
       "",
-      "✨ !menu",
-      "📋 Lihat semua fitur bot",
+      "� !menu",
+      "  Lihat semua fitur bot",
       "",
-      "✨ !sticker",
-      "🖼️ Kirim gambar/video + caption !sticker → jadi sticker",
+      "� !sticker",
+      "  Kirim gambar/video + caption !sticker jadi sticker",
       "",
-      "✨ !brat <teks>",
-      "✏️ Ubah teks jadi sticker keren. cth:(!brat halo dunia)",
+      "� !brat <teks>",
+      "  Ubah teks jadi sticker keren. cth: (!brat halo dunia)",
     ].join("\n");
 
     if (text === "!menu") {
@@ -213,7 +213,7 @@ async function startBot() {
         const lastTime = stickerCooldowns.get(sender);
         if (Date.now() - lastTime < 20000) {
           await sock.sendMessage(from, {
-            text: "⏳ Tunggu sebentar, kamu sedang cooldown",
+            text: "Tunggu sebentar, kamu sedang cooldown",
           });
           return;
         }
@@ -386,3 +386,4 @@ async function startBot() {
 }
 
 startBot();
+
