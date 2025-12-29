@@ -104,6 +104,20 @@ const stickerCooldowns = new Map();
 const MAX_VIDEO_SECONDS = 10;
 const MAX_VIDEO_SIZE_BYTES = 10 * 1024 * 1024;
 
+function unwrapMessage(message) {
+  if (!message) return message;
+  if (message.ephemeralMessage?.message) {
+    return unwrapMessage(message.ephemeralMessage.message);
+  }
+  if (message.viewOnceMessage?.message) {
+    return unwrapMessage(message.viewOnceMessage.message);
+  }
+  if (message.viewOnceMessageV2?.message) {
+    return unwrapMessage(message.viewOnceMessageV2.message);
+  }
+  return message;
+}
+
 async function streamToBuffer(stream) {
   let buffer = Buffer.from([]);
   for await (const chunk of stream) {
@@ -178,10 +192,16 @@ async function startBot() {
     const msg = messages[0];
     if (!msg.message) return;
 
+    const content = unwrapMessage(msg.message);
+    if (!content) return;
+
     const from = msg.key.remoteJid;
     const sender = msg.key.participant || from; // Sender JID (for groups or private)
     const text =
-      msg.message.conversation || msg.message.extendedTextMessage?.text;
+      content.conversation ||
+      content.extendedTextMessage?.text ||
+      content.imageMessage?.caption ||
+      content.videoMessage?.caption;
 
     console.log("Received message:", text); // Debug log    console.log('Message type:', Object.keys(msg.message)); // Debug log
     const menuText = [
@@ -214,8 +234,8 @@ async function startBot() {
     }
     // Check if message is an image with caption "!sticker"
     if (
-      msg.message.imageMessage &&
-      msg.message.imageMessage.caption === "!sticker"
+      content.imageMessage &&
+      content.imageMessage.caption === "!sticker"
     ) {
       // Check cooldown
       if (stickerCooldowns.has(sender)) {
@@ -230,7 +250,7 @@ async function startBot() {
 
       try {
         const stream = await downloadContentFromMessage(
-          msg.message.imageMessage,
+          content.imageMessage,
           "image"
         );
         const buffer = await streamToBuffer(stream);
@@ -260,12 +280,12 @@ async function startBot() {
       }
     } else if (
       text === "!sticker" ||
-      msg.message.videoMessage?.caption === "!sticker"
+      content.videoMessage?.caption === "!sticker"
     ) {
       const quotedVideo =
-        msg.message.extendedTextMessage?.contextInfo?.quotedMessage
+        content.extendedTextMessage?.contextInfo?.quotedMessage
           ?.videoMessage;
-      const videoMessage = msg.message.videoMessage || quotedVideo;
+      const videoMessage = content.videoMessage || quotedVideo;
 
       if (!videoMessage) {
         await sock.sendMessage(from, {
